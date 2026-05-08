@@ -1,0 +1,19 @@
+Test ID,WF ID,Test Category,Scenario,Expected Final State
+WF-001-E2E-01,WF-001,End-to-End,"Full happy-path procurement: get designations → check duplicates →
+submit indent → HOD approves → PS admin views stock → audit log verified","All API steps return 2xx; indent progresses through states;
+AuditLog entry created; stock available for next step"
+WF-001-NEG-01,WF-001,Negative,"Interrupted workflow — employee cancels indent mid-process,
+then system prevents further rejection of the cancelled indent","Cancel returns 200/204; subsequent reject returns 400/409;
+indent.status remains CANCELLED; no further state transitions permitted"
+WF-002-E2E-01,WF-002,End-to-End,"Check stock availability → view stock entries → perform transfer
+of selected items → verify StockItem updated","Stock view returns 200; Stock entry view returns 200;
+Transfer returns 200/201; StockItem.isTransferred = True"
+WF-002-NEG-01,WF-002,Negative,"Attempt to transfer stock item that is already in use (inUse=True)
+or already transferred — item should be filtered out","In-use stock item does not appear in available stock pool;
+Double-transfer attempt returns 400/error; data integrity preserved"
+WF-003-E2E-01,WF-003,End-to-End,"List GRNs → identify discrepant GRN → create ProductReturn →
+process return with REFUND resolution → verify status updated","GRN list returns 200; Return created (200/201);
+Resolution updates return.status; invoice_hold_released = True"
+WF-003-NEG-01,WF-003,Negative,"Attempt to process a product return that does not exist —
+system must return 404, not crash with 500","HTTP 404 returned for non-existent return ID;
+No server crash; no data corruption; clean error message"

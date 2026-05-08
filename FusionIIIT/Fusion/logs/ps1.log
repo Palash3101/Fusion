@@ -1,0 +1,39 @@
+[ERROR] 2026-04-20 10:02:15,744 ps1.views 60822 6130102272: confirm_delivery failed: grn=999999
+Traceback (most recent call last):
+  File "/Users/arjavjain/fusion/Fusion/venv/lib/python3.8/site-packages/django/shortcuts.py", line 76, in get_object_or_404
+    return queryset.get(*args, **kwargs)
+  File "/Users/arjavjain/fusion/Fusion/venv/lib/python3.8/site-packages/django/db/models/query.py", line 429, in get
+    raise self.model.DoesNotExist(
+applications.ps1.models.GoodsReceivedNote.DoesNotExist: GoodsReceivedNote matching query does not exist.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/arjavjain/fusion/Fusion/FusionIIIT/applications/ps1/api/views_assignment7_additions.py", line 186, in confirm_delivery
+    grn = service_confirm_delivery(grn_id, request.user)
+  File "/Users/arjavjain/fusion/Fusion/FusionIIIT/applications/ps1/services_assignment7_additions.py", line 162, in service_confirm_delivery
+    grn = get_object_or_404(GoodsReceivedNote, pk=grn_id)
+  File "/Users/arjavjain/fusion/Fusion/venv/lib/python3.8/site-packages/django/shortcuts.py", line 78, in get_object_or_404
+    raise Http404('No %s matches the given query.' % queryset.model._meta.object_name)
+django.http.response.Http404: No GoodsReceivedNote matches the given query.
+[ERROR] 2026-04-20 10:09:36,410 ps1.views 60822 6130102272: confirm_delivery failed: grn=999999
+Traceback (most recent call last):
+  File "/Users/arjavjain/fusion/Fusion/venv/lib/python3.8/site-packages/django/shortcuts.py", line 76, in get_object_or_404
+    return queryset.get(*args, **kwargs)
+  File "/Users/arjavjain/fusion/Fusion/venv/lib/python3.8/site-packages/django/db/models/query.py", line 429, in get
+    raise self.model.DoesNotExist(
+applications.ps1.models.GoodsReceivedNote.DoesNotExist: GoodsReceivedNote matching query does not exist.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/arjavjain/fusion/Fusion/FusionIIIT/applications/ps1/api/views_assignment7_additions.py", line 186, in confirm_delivery
+    grn = service_confirm_delivery(grn_id, request.user)
+  File "/Users/arjavjain/fusion/Fusion/FusionIIIT/applications/ps1/services_assignment7_additions.py", line 162, in service_confirm_delivery
+    grn = get_object_or_404(GoodsReceivedNote, pk=grn_id)
+  File "/Users/arjavjain/fusion/Fusion/venv/lib/python3.8/site-packages/django/shortcuts.py", line 78, in get_object_or_404
+    raise Http404('No %s matches the given query.' % queryset.model._meta.object_name)
+django.http.response.Http404: No GoodsReceivedNote matches the given query.
+[INFO] 2026-04-20 16:35:53,350 ps1.views 68832 6163574784: cancel_indent: indent=635 cancelled_by=21BCS102
+[INFO] 2026-04-20 16:41:01,649 ps1.views 68832 6164148224: cancel_indent: indent=634 cancelled_by=21BCS102
+[INFO] 2026-04-20 16:43:38,574 ps1.views 69131 6178074624: cancel_indent: indent=633 cancelled_by=21BCS102

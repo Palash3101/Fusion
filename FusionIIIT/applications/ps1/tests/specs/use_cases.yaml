@@ -1,0 +1,253 @@
+use_cases:
+
+  - id: "UC-001"
+    title: "Submit Purchase Indent"
+    description: "Employee files a purchase indent request for goods/equipment"
+    actors: "Employee / Student"
+    preconditions: "User is authenticated and holds a valid designation"
+    happy_paths:
+      - scenario: "Authenticated employee submits complete indent with all required fields"
+        preconditions: "User authenticated; holds student/employee designation"
+        input_action: "POST /api/create_proposal/ with item_name, quantity, estimated_cost, designation, purpose"
+        expected_result: "HTTP 200/201; IndentFile record created in DB; file_info linked"
+    alternate_paths:
+      - scenario: "Create indent as a draft instead of proposal"
+        preconditions: "User authenticated"
+        input_action: "POST /api/create_draft/ with partial data"
+        expected_result: "HTTP 200/201; draft saved"
+    exception_paths:
+      - scenario: "Unauthenticated user attempts to submit indent"
+        preconditions: "No auth token"
+        input_action: "POST /api/create_proposal/ without Authorization header"
+        expected_result: "HTTP 401 or 403; request denied"
+
+  - id: "UC-002"
+    title: "Goods Received Note (Delivery Confirmation)"
+    description: "PS admin records delivery of goods against a purchase order"
+    actors: "PS Admin"
+    preconditions: "StockEntry exists for the indent; goods have been delivered"
+    happy_paths:
+      - scenario: "PS admin creates GRN for fully received and accepted goods"
+        preconditions: "StockEntry and IndentFile exist in DB"
+        input_action: "POST /api/grn/create/ with grn_number, quantity_received=2, quantity_accepted=2, quality_check_passed=True"
+        expected_result: "HTTP 200/201; GRN record created; has_discrepancy=False"
+    alternate_paths:
+      - scenario: "GRN created with delivery discrepancy (1 of 2 damaged)"
+        preconditions: "StockEntry exists; goods received with damage"
+        input_action: "POST /api/grn/create/ with quantity_accepted=1, has_discrepancy=True, discrepancy_details filled"
+        expected_result: "HTTP 200/201; has_discrepancy=True; invoice hold triggered"
+    exception_paths:
+      - scenario: "Create GRN without mandatory grn_number field"
+        preconditions: "User authenticated as PS admin"
+        input_action: "POST /api/grn/create/ without grn_number"
+        expected_result: "HTTP 400; validation error: grn_number required"
+
+  - id: "UC-003"
+    title: "Track Procurement Status"
+    description: "User tracks the current status and lifecycle of their filed indents"
+    actors: "Employee / Student"
+    preconditions: "User has previously filed at least one indent"
+    happy_paths:
+      - scenario: "User retrieves list of their own indents"
+        preconditions: "User authenticated; indents exist for user"
+        input_action: "GET /api/my-indents/{username}/"
+        expected_result: "HTTP 200; list of IndentFile records returned"
+    alternate_paths:
+      - scenario: "User views indents inward to their designation"
+        preconditions: "User holds a designation; indents forwarded to them"
+        input_action: "GET /api/inwardIndents/{hd_id}"
+        expected_result: "HTTP 200; list of forwarded/inward indents"
+    exception_paths:
+      - scenario: "Request indents for a non-existent username"
+        preconditions: "User authenticated"
+        input_action: "GET /api/my-indents/no_such_user_xyz/"
+        expected_result: "HTTP 404 or 400; user not found"
+
+  - id: "UC-005"
+    title: "Cancel Purchase Indent"
+    description: "Employee or HOD cancels an active indent (soft cancel — no hard delete)"
+    actors: "Employee / HOD / PS Admin"
+    preconditions: "Indent exists in ACTIVE or PENDING state"
+    happy_paths:
+      - scenario: "Employee cancels their own ACTIVE indent with a valid reason"
+        preconditions: "User is owner of indent; indent.status = ACTIVE"
+        input_action: "POST /api/indents/{id}/cancel/ with {reason: 'No longer needed'}"
+        expected_result: "HTTP 200/204; indent.status = CANCELLED; record preserved (not deleted); audit log entry created"
+    alternate_paths:
+      - scenario: "HOD cancels an indent on behalf of department"
+        preconditions: "User holds HOD designation; indent in ACTIVE state"
+        input_action: "POST /api/indents/{id}/cancel/ with {reason: 'Budget cut'} using HOD token"
+        expected_result: "HTTP 200/204; indent.status = CANCELLED"
+    exception_paths:
+      - scenario: "Cancel a non-existent indent (invalid ID)"
+        preconditions: "User authenticated"
+        input_action: "POST /api/indents/999999/cancel/ with reason"
+        expected_result: "HTTP 404; 'Indent not found' error — NOT a 500"
+
+  - id: "UC-006"
+    title: "Check Stock Availability"
+    description: "Dept admin views current stock levels before processing procurement"
+    actors: "Dept Admin / PS Admin"
+    preconditions: "User holds deptadmin or ps_admin designation"
+    happy_paths:
+      - scenario: "Dept admin views current stock for their department"
+        preconditions: "User authenticated; holds deptadmin designation"
+        input_action: "GET /api/current_stock_view/{hd_id}"
+        expected_result: "HTTP 200; stock item list for the department"
+    alternate_paths:
+      - scenario: "View stock items for specific item type"
+        preconditions: "Stock items of type 'Electronics' exist"
+        input_action: "GET /api/stock_entry_item_view/{hd_id}"
+        expected_result: "HTTP 200; filtered stock entry items"
+    exception_paths:
+      - scenario: "Student role attempts to access stock view"
+        preconditions: "User holds only student designation"
+        input_action: "GET /api/current_stock_view/{student_hd_id}"
+        expected_result: "HTTP 403; access denied — insufficient role"
+
+  - id: "UC-011"
+    title: "Duplicate Indent Detection"
+    description: "System checks for existing similar indents before allowing new submission"
+    actors: "Employee / System"
+    preconditions: "User authenticated"
+    happy_paths:
+      - scenario: "Check for unique item — no duplicates in system"
+        preconditions: "No previous indent with same item_name and item_type"
+        input_action: "POST /api/indents/check-duplicates/ with {item_name: 'UniqueDeviceXYZ', item_type: 'Electronics'}"
+        expected_result: "HTTP 200; duplicates=[] or is_duplicate=false"
+    alternate_paths:
+      - scenario: "Check item that already has similar indents"
+        preconditions: "IndentFile with item_name='Test Laptop' exists"
+        input_action: "POST /api/indents/check-duplicates/ with {item_name: 'Test Laptop', item_type: 'Electronics'}"
+        expected_result: "HTTP 200; duplicates list with existing matching indents"
+    exception_paths:
+      - scenario: "Submit duplicate check without item_name field"
+        preconditions: "User authenticated"
+        input_action: "POST /api/indents/check-duplicates/ with empty body {}"
+        expected_result: "HTTP 400; validation error: item_name is required"
+
+  - id: "UC-012"
+    title: "Reject Purchase Indent"
+    description: "Authorized officer rejects an indent with a mandatory reason"
+    actors: "PS Admin / HOD / Director"
+    preconditions: "Indent in ACTIVE/PENDING state; user holds approval role"
+    happy_paths:
+      - scenario: "PS admin rejects indent with a valid non-empty reason"
+        preconditions: "Indent status = ACTIVE; user is PS admin"
+        input_action: "POST /api/indents/{id}/reject/ with {reason: 'Budget constraint'}"
+        expected_result: "HTTP 200/204; indent.status = REJECTED; rejection_reason stored"
+    alternate_paths:
+      - scenario: "HOD rejects indent forwarded to them"
+        preconditions: "Indent forwarded to HOD designation"
+        input_action: "POST /api/indents/{id}/reject/ using HOD token with reason"
+        expected_result: "HTTP 200/204; indent rejected; notification sent to creator"
+    exception_paths:
+      - scenario: "Reject without providing any reason"
+        preconditions: "Indent in ACTIVE state"
+        input_action: "POST /api/indents/{id}/reject/ with empty body {}"
+        expected_result: "HTTP 400; 'rejection reason is mandatory'"
+
+  - id: "UC-014"
+    title: "Audit Financial Records"
+    description: "Auditor views audit trail of all procurement actions"
+    actors: "Auditor / Director"
+    preconditions: "User holds Auditor or Director designation"
+    happy_paths:
+      - scenario: "Auditor lists all audit log entries"
+        preconditions: "User holds Auditor designation; audit entries exist"
+        input_action: "GET /api/audit-logs/"
+        expected_result: "HTTP 200; list of AuditLog records with action, user, timestamp, entity details"
+    alternate_paths:
+      - scenario: "Auditor filters audit logs by action type"
+        preconditions: "Auditor authenticated"
+        input_action: "GET /api/audit-logs/?action=CANCEL_INDENT"
+        expected_result: "HTTP 200; filtered log entries for CANCEL_INDENT actions only"
+    exception_paths:
+      - scenario: "Student role attempts to view audit logs"
+        preconditions: "User holds only student designation"
+        input_action: "GET /api/audit-logs/ with student token"
+        expected_result: "HTTP 403; access denied — Auditor/Director role required"
+
+  - id: "UC-016"
+    title: "Department Head Indent Approval"
+    description: "HOD reviews and approves/rejects indents from their department"
+    actors: "HOD"
+    preconditions: "Indent forwarded to HOD designation"
+    happy_paths:
+      - scenario: "HOD approves department indent"
+        preconditions: "Indent exists; user holds HOD designation"
+        input_action: "POST /api/approve-indent/ with {file_id: N, approved: true}"
+        expected_result: "HTTP 200/201; approval recorded; indent forwarded to next stage"
+    alternate_paths:
+      - scenario: "HOD rejects indent with comments"
+        preconditions: "HOD authenticated; indent in ACTIVE state"
+        input_action: "POST /api/approve-indent/ with {file_id: N, approved: false, comments: 'Duplicate request'}"
+        expected_result: "HTTP 200; rejection noted; creator notified"
+    exception_paths:
+      - scenario: "Approve without providing file_id"
+        preconditions: "User authenticated as HOD"
+        input_action: "POST /api/approve-indent/ with empty body {}"
+        expected_result: "HTTP 400; file_id is required"
+
+  - id: "UC-019"
+    title: "Vendor Onboarding and Management"
+    description: "PS admin registers, updates, and manages approved vendor master data"
+    actors: "PS Admin"
+    preconditions: "User holds ps_admin designation"
+    happy_paths:
+      - scenario: "PS admin creates a new vendor with unique code and valid GST/PAN"
+        preconditions: "vendor_code not already in system"
+        input_action: "POST /api/vendors/create/ with vendor_code, vendor_name, gst_number, pan_number"
+        expected_result: "HTTP 200/201; Vendor record created; is_approved=False by default"
+    alternate_paths:
+      - scenario: "List all registered vendors"
+        preconditions: "User authenticated; at least one vendor exists"
+        input_action: "GET /api/vendors/"
+        expected_result: "HTTP 200; list of all Vendor records with full details"
+    exception_paths:
+      - scenario: "Unauthenticated request to vendor list"
+        preconditions: "No auth token"
+        input_action: "GET /api/vendors/ without Authorization header"
+        expected_result: "HTTP 401 or 403; access denied"
+
+  - id: "UC-020"
+    title: "Product Return and Discrepancy Resolution"
+    description: "PS admin initiates and processes returns for defective/damaged deliveries"
+    actors: "PS Admin"
+    preconditions: "GRN with has_discrepancy=True exists"
+    happy_paths:
+      - scenario: "List all existing product return records"
+        preconditions: "User authenticated"
+        input_action: "GET /api/returns/"
+        expected_result: "HTTP 200; list of ProductReturn records"
+    alternate_paths:
+      - scenario: "Create product return for identified discrepancy"
+        preconditions: "GRN in DB with has_discrepancy=True"
+        input_action: "POST /api/returns/create/ with grn_id, stock_entry_id, return_number, return_reason, quantity_returned"
+        expected_result: "HTTP 200/201; ProductReturn record created; invoice_hold=True"
+    exception_paths:
+      - scenario: "Create return with completely missing fields"
+        preconditions: "User authenticated"
+        input_action: "POST /api/returns/create/ with empty body {}"
+        expected_result: "HTTP 400; required fields: grn, stock_entry, return_number"
+
+  - id: "UC-022"
+    title: "Tender and Competitive Procurement"
+    description: "PS admin creates, publishes tenders and manages bids for high-value procurement"
+    actors: "PS Admin / Director"
+    preconditions: "User holds ps_admin or Director designation; indent exists"
+    happy_paths:
+      - scenario: "List all tenders in the system"
+        preconditions: "User authenticated"
+        input_action: "GET /api/tenders/"
+        expected_result: "HTTP 200; list of Tender records with status and bid counts"
+    alternate_paths:
+      - scenario: "Create tender for high-value indent"
+        preconditions: "PS admin authenticated; IndentFile with high estimated_cost exists"
+        input_action: "POST /api/tenders/create/ with tender_number, title, estimated_value, bid_submission_deadline"
+        expected_result: "HTTP 200/201; Tender created in DRAFT status"
+    exception_paths:
+      - scenario: "Create tender with all fields missing"
+        preconditions: "User authenticated"
+        input_action: "POST /api/tenders/create/ with empty body {}"
+        expected_result: "HTTP 400; required fields validation error"

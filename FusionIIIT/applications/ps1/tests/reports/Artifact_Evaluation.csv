@@ -1,0 +1,35 @@
+Artifact ID,Artifact Type,Tests,Pass,Partial,Fail,Final Status,Remarks
+UC-001,Use Case,3,0,0,0,Not Implemented,Submit Purchase Indent
+UC-002,Use Case,3,0,0,0,Not Implemented,Goods Received Note (Delivery Confirmation)
+UC-003,Use Case,3,0,0,0,Not Implemented,Track Procurement Status
+UC-005,Use Case,3,0,0,0,Not Implemented,Cancel Purchase Indent
+UC-006,Use Case,3,0,0,0,Not Implemented,Check Stock Availability
+UC-011,Use Case,3,0,0,0,Not Implemented,Duplicate Indent Detection
+UC-012,Use Case,3,0,0,0,Not Implemented,Reject Purchase Indent
+UC-014,Use Case,3,0,0,0,Not Implemented,Audit Financial Records
+UC-016,Use Case,3,0,0,0,Not Implemented,Department Head Indent Approval
+UC-019,Use Case,3,0,0,0,Not Implemented,Vendor Onboarding and Management
+UC-020,Use Case,3,0,0,0,Not Implemented,Product Return and Discrepancy Resolution
+UC-022,Use Case,3,0,0,0,Not Implemented,Tender and Competitive Procurement
+BR-PS-001,Business Rule,2,0,0,0,Not Enforced,Indent Completeness — All Required Fields
+BR-PS-002,Business Rule,2,0,0,0,Not Enforced,Positive Quantity Constraint
+BR-PS-003,Business Rule,2,0,0,0,Not Enforced,Authentication Required on All Endpoints
+BR-PS-004,Business Rule,2,0,0,0,Not Enforced,Role-Based Access Control (RBAC)
+BR-PS-005,Business Rule,2,0,0,0,Not Enforced,Rejection Reason Mandatory
+BR-PS-006,Business Rule,2,0,0,0,Not Enforced,Cancellation Reason Mandatory
+BR-PS-007,Business Rule,2,0,0,0,Not Enforced,Soft Cancel — No Hard Delete
+BR-PS-008,Business Rule,2,0,0,0,Not Enforced,Tender for High-Value Procurement
+BR-PS-009,Business Rule,2,0,0,0,Not Enforced,GRN Discrepancy Flag
+BR-PS-010,Business Rule,2,0,0,0,Not Enforced,Unique Vendor Code
+BR-PS-011,Business Rule,2,0,0,0,Not Enforced,Stock Reservation — Active Tracking
+BR-PS-012,Business Rule,2,0,0,0,Not Enforced,Audit Log on Every State Change
+BR-PS-013,Business Rule,2,0,0,0,Not Enforced,Invoice Hold on Discrepancy
+BR-PS-014,Business Rule,2,0,0,0,Not Enforced,Return Resolution Type Validity
+BR-PS-015,Business Rule,2,0,0,0,Not Enforced,Duplicate Detection — item_name Required
+BR-PS-016,Business Rule,2,0,0,0,Not Enforced,Vendor Master Data Integrity
+BR-PS-017,Business Rule,2,0,0,0,Not Enforced,Audit Log Filtering
+BR-PS-018,Business Rule,2,0,0,0,Not Enforced,GRN Existence Check Before Confirm
+BR-PS-019,Business Rule,2,0,0,0,Not Enforced,Designation-Based Stock Access
+WF-001,Workflow,2,0,0,0,Missing,Internal Procurement Workflow
+WF-002,Workflow,2,0,0,0,Missing,Inter-Department Stock Transfer Workflow
+WF-003,Workflow,2,0,0,0,Missing,Product Return and Discrepancy Resolution Workflow

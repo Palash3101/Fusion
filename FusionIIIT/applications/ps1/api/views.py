@@ -12,7 +12,7 @@ from django.utils import timezone
 from notification.views import office_module_notif
 from django.contrib import messages
 from django.contrib.auth.models import User
-from notification.views import purchase_notif,iwd_notif
+from notification.views import iwd_notif
 from applications.filetracking.sdk.methods import *
 from datetime import datetime
 from django.http import HttpResponseForbidden,JsonResponse
@@ -996,7 +996,7 @@ def forwardIndent(request, id):
         print("noti",request.user);
         print("noti2",receiver_id);
         # iwd_notif(request.user, receiver_id, "Request_added")
-        purchase_notif(request.user,receiver_id)
+        office_module_notif(request.user,receiver_id)
         # office_module_notif(request.user, receiver_id)
         if((sender_designation_name in ["HOD (CSE)", "HOD (ECE)", "HOD (ME)", "HOD (SM)", "HOD (Design)", "HOD (Liberal Arts)", "HOD (Natural Science)"]) and (str(receive_design) in ["Director","Registrar"])):
             indent.head_approval=True
@@ -1098,7 +1098,7 @@ def createProposal(request):
                     sources_of_supply=item.get('sources_of_supply', ''),
                 )
             
-            purchase_notif(request.user,receiver)
+            office_module_notif(request.user,receiver)
             
             # Auto-approve if receiver is 'ps_admin'
             if receiver_designation == "ps_admin":
@@ -1170,7 +1170,13 @@ def my_indents_view(request, username):
                 'indent_name': indent.indent_name,
                 'description': indent.description,
                 'upload_date': indent.file_info.upload_date,
-                'status': {
+                'file_info': indent.file_info_id,
+                'status': indent.status,
+                'head_approval': indent.head_approval,
+                'director_approval': indent.director_approval,
+                'financial_approval': indent.financial_approval,
+                'purchased': indent.purchased,
+                'approvals': {
                     'head_approval': indent.head_approval,
                     'director_approval': indent.director_approval,
                     'financial_approval': indent.financial_approval,
