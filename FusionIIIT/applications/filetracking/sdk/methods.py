@@ -342,10 +342,13 @@ def get_designations(username: str) -> list:
     '''
     This function is used to return a list of all the designation names of a particular user
     '''
-    user = User.objects.get(username=username)
-    designations_held = HoldsDesignation.objects.filter(user=user)
-    designation_name = [hold_designation.designation.name for hold_designation in designations_held]
-    return designation_name
+    try:
+        user = User.objects.get(username=username)
+        designations_held = HoldsDesignation.objects.filter(user=user)
+        designation_name = [hold_designation.designation.name for hold_designation in designations_held]
+        return designation_name
+    except User.DoesNotExist:
+        return []
 
 
 def get_user_object_from_username(username: str) -> User:

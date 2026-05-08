@@ -1,0 +1,70 @@
+workflows:
+
+  - id: "WF-001"
+    title: "Internal Procurement Workflow"
+    description: |
+      Employee identifies need → Checks duplicates → Submits indent →
+      HOD reviews and approves → PS admin routes (stock check or raise PO) →
+      Goods received (GRN) → Stock entry created → Transfer to dept → Audit logged
+    actors: "Employee, HOD, PS Admin, Dealing Assistant"
+    e2e_tests:
+      - scenario: |
+          Full happy-path procurement: get designations → check duplicates →
+          submit indent → HOD approves → PS admin views stock → audit log verified
+        expected_final_state: |
+          All API steps return 2xx; indent progresses through states;
+          AuditLog entry created; stock available for next step
+
+    negative_tests:
+      - scenario: |
+          Interrupted workflow — employee cancels indent mid-process,
+          then system prevents further rejection of the cancelled indent
+        expected_final_state: |
+          Cancel returns 200/204; subsequent reject returns 400/409;
+          indent.status remains CANCELLED; no further state transitions permitted
+
+  - id: "WF-002"
+    title: "Inter-Department Stock Transfer Workflow"
+    description: |
+      Receiving dept admin identifies need → PS admin checks available stock →
+      Selects stock items → Executes transfer → StockItem.isTransferred = True →
+      Audit log updated → Receiving dept sees new stock
+    actors: "Dept Admin, PS Admin"
+    e2e_tests:
+      - scenario: |
+          Check stock availability → view stock entries → perform transfer
+          of selected items → verify StockItem updated
+        expected_final_state: |
+          Stock view returns 200; Stock entry view returns 200;
+          Transfer returns 200/201; StockItem.isTransferred = True
+
+    negative_tests:
+      - scenario: |
+          Attempt to transfer stock item that is already in use (inUse=True)
+          or already transferred — item should be filtered out
+        expected_final_state: |
+          In-use stock item does not appear in available stock pool;
+          Double-transfer attempt returns 400/error; data integrity preserved
+
+  - id: "WF-003"
+    title: "Product Return and Discrepancy Resolution Workflow"
+    description: |
+      Goods received with damage → GRN created with has_discrepancy=True →
+      invoice_hold set → ProductReturn created → Resolution chosen (REFUND/REPLACE) →
+      Invoice hold released → Vendor notified → Audit logged
+    actors: "PS Admin, Accounts Admin"
+    e2e_tests:
+      - scenario: |
+          List GRNs → identify discrepant GRN → create ProductReturn →
+          process return with REFUND resolution → verify status updated
+        expected_final_state: |
+          GRN list returns 200; Return created (200/201);
+          Resolution updates return.status; invoice_hold_released = True
+
+    negative_tests:
+      - scenario: |
+          Attempt to process a product return that does not exist —
+          system must return 404, not crash with 500
+        expected_final_state: |
+          HTTP 404 returned for non-existent return ID;
+          No server crash; no data corruption; clean error message

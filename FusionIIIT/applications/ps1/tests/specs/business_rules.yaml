@@ -1,0 +1,191 @@
+business_rules:
+
+  - id: "BR-PS-001"
+    title: "Indent Completeness — All Required Fields"
+    description: "A purchase indent must contain item_name, quantity, estimated_cost, purpose, and designation before submission"
+    valid_tests:
+      - input_action: "POST /api/create_proposal/ with all required fields correctly filled"
+        expected_result: "HTTP 200/201; indent created"
+    invalid_tests:
+      - input_action: "POST /api/create_proposal/ with empty JSON body {}"
+        expected_result: "HTTP 400/422; validation error listing missing required fields"
+
+  - id: "BR-PS-002"
+    title: "Positive Quantity Constraint"
+    description: "Indent quantity must be a positive integer (quantity >= 1)"
+    valid_tests:
+      - input_action: "Submit indent with quantity=1 (minimum valid value)"
+        expected_result: "HTTP 200/201; indent accepted"
+    invalid_tests:
+      - input_action: "Submit indent with quantity=0"
+        expected_result: "HTTP 400; quantity must be at least 1"
+
+  - id: "BR-PS-003"
+    title: "Authentication Required on All Endpoints"
+    description: "Every PS1 API endpoint must reject unauthenticated requests"
+    valid_tests:
+      - input_action: "GET /api/getDesignations/ with valid Bearer token"
+        expected_result: "HTTP 200; designation data returned"
+    invalid_tests:
+      - input_action: "GET /api/getDesignations/ without Authorization header"
+        expected_result: "HTTP 401 or 403; access denied — token required"
+
+  - id: "BR-PS-004"
+    title: "Role-Based Access Control (RBAC)"
+    description: "Only users with appropriate designations can access restricted stock and admin endpoints"
+    valid_tests:
+      - input_action: "GET /api/stock_entry_view/{ps_hd_id} with ps_admin token"
+        expected_result: "HTTP 200; stock entry data returned"
+    invalid_tests:
+      - input_action: "GET /api/stock_entry_view/{student_hd_id} with student token"
+        expected_result: "HTTP 403; student role denied access to stock_entry_view"
+
+  - id: "BR-PS-005"
+    title: "Rejection Reason Mandatory"
+    description: "An indent rejection must include a non-empty reason string"
+    valid_tests:
+      - input_action: "POST /api/indents/{id}/reject/ with {reason: 'Insufficient budget allocation'}"
+        expected_result: "HTTP 200/204; indent rejected; reason stored"
+    invalid_tests:
+      - input_action: "POST /api/indents/{id}/reject/ with {reason: ''} or missing reason key"
+        expected_result: "HTTP 400; rejection reason is mandatory"
+
+  - id: "BR-PS-006"
+    title: "Cancellation Reason Mandatory"
+    description: "An indent cancellation must include a non-empty reason"
+    valid_tests:
+      - input_action: "POST /api/indents/{id}/cancel/ with {reason: 'Changed plans'}"
+        expected_result: "HTTP 200/204; indent cancelled; reason persisted"
+    invalid_tests:
+      - input_action: "POST /api/indents/{id}/cancel/ with {} (empty body)"
+        expected_result: "HTTP 400; cancellation reason required"
+
+  - id: "BR-PS-007"
+    title: "Soft Cancel — No Hard Delete"
+    description: "Cancelled indents must remain in the database with status=CANCELLED; hard deletion is not permitted"
+    valid_tests:
+      - input_action: "Cancel indent and verify DB record still exists with status=CANCELLED"
+        expected_result: "Cancel returns 200; IndentFile.objects.filter(pk=id).exists() == True"
+    invalid_tests:
+      - input_action: "Attempt DELETE /api/indents/{id}/ — method should not exist"
+        expected_result: "HTTP 404 or 405; DELETE method not supported"
+
+  - id: "BR-PS-008"
+    title: "Tender for High-Value Procurement"
+    description: "Procurement exceeding threshold must go through tender/competitive bidding process"
+    valid_tests:
+      - input_action: "POST /api/tenders/create/ by PS admin with estimated_value > threshold"
+        expected_result: "HTTP 200/201; Tender created in DRAFT status"
+    invalid_tests:
+      - input_action: "POST /api/tenders/create/ without Authorization header"
+        expected_result: "HTTP 401/403; only authorized roles can create tenders"
+
+  - id: "BR-PS-009"
+    title: "GRN Discrepancy Flag"
+    description: "When quantity_accepted < quantity_received, has_discrepancy must be set to True"
+    valid_tests:
+      - input_action: "GET /api/grn/ — list all GRNs; verify has_discrepancy field present"
+        expected_result: "HTTP 200; GRN records returned with has_discrepancy boolean field"
+    invalid_tests:
+      - input_action: "POST /api/grn/{id}/confirm/ with non-existent GRN ID"
+        expected_result: "HTTP 404; GRN not found — no server crash"
+
+  - id: "BR-PS-010"
+    title: "Unique Vendor Code"
+    description: "Every vendor must have a unique vendor_code; duplicates must be rejected"
+    valid_tests:
+      - input_action: "POST /api/vendors/create/ with unique vendor_code (first time)"
+        expected_result: "HTTP 200/201; Vendor record created"
+    invalid_tests:
+      - input_action: "POST /api/vendors/create/ with vendor_code that already exists in DB"
+        expected_result: "HTTP 400; vendor_code already exists — unique constraint"
+
+  - id: "BR-PS-011"
+    title: "Stock Reservation — Active Tracking"
+    description: "Stock reserved via StockReservation must be marked is_active=True and linked to an indent"
+    valid_tests:
+      - input_action: "POST /api/reservations/create/ with valid indent_file_id and stock_item_id"
+        expected_result: "HTTP 200/201; StockReservation created with is_active=True"
+    invalid_tests:
+      - input_action: "POST /api/reservations/999999/release/ with non-existent reservation ID"
+        expected_result: "HTTP 404; reservation not found — no 500"
+
+  - id: "BR-PS-012"
+    title: "Audit Log on Every State Change"
+    description: "Every significant action (cancel, reject, approve, GRN create) must create an AuditLog entry"
+    valid_tests:
+      - input_action: "GET /api/audit-logs/ — verify audit log accessible to Auditor role"
+        expected_result: "HTTP 200; AuditLog list with action, user, timestamp"
+    invalid_tests:
+      - input_action: "GET /api/audit-logs/ with student token (insufficient role)"
+        expected_result: "HTTP 403; access denied to audit logs"
+
+  - id: "BR-PS-013"
+    title: "Invoice Hold on Discrepancy"
+    description: "Creating a ProductReturn for a discrepant GRN must set invoice_hold=True on the return"
+    valid_tests:
+      - input_action: "GET /api/returns/ — verify ProductReturn records include invoice_hold field"
+        expected_result: "HTTP 200; returns list with invoice_hold field present"
+    invalid_tests:
+      - input_action: "POST /api/returns/{id}/process/ with empty body (missing resolution_type)"
+        expected_result: "HTTP 400; resolution_type is required"
+
+  - id: "BR-PS-014"
+    title: "Return Resolution Type Validity"
+    description: "Return resolution must be one of: REFUND, REPLACE, CREDIT_NOTE, REJECT"
+    valid_tests:
+      - input_action: "POST /api/returns/{id}/process/ with resolution_type='REFUND', remarks='Approved'"
+        expected_result: "HTTP 200/204; return status updated"
+    invalid_tests:
+      - input_action: "POST /api/returns/{id}/process/ with resolution_type='INVALID_TYPE'"
+        expected_result: "HTTP 400; invalid choice for resolution_type"
+
+  - id: "BR-PS-015"
+    title: "Duplicate Detection — item_name Required"
+    description: "Duplicate check endpoint requires item_name field; empty check request is invalid"
+    valid_tests:
+      - input_action: "POST /api/indents/check-duplicates/ with item_name and item_type provided"
+        expected_result: "HTTP 200; duplicate check result returned"
+    invalid_tests:
+      - input_action: "POST /api/indents/check-duplicates/ with no body {}"
+        expected_result: "HTTP 400; item_name field required"
+
+  - id: "BR-PS-016"
+    title: "Vendor Master Data Integrity"
+    description: "Vendor records must have accessible detail views; non-existent vendor queries return 404"
+    valid_tests:
+      - input_action: "GET /api/vendors/ — list returns vendor records with all fields"
+        expected_result: "HTTP 200; vendor list; each record has vendor_code, vendor_name, gst_number"
+    invalid_tests:
+      - input_action: "GET /api/vendors/999999/ — vendor with this ID does not exist"
+        expected_result: "HTTP 404; vendor not found"
+
+  - id: "BR-PS-017"
+    title: "Audit Log Filtering"
+    description: "Audit logs must support filtering by action type for targeted audit queries"
+    valid_tests:
+      - input_action: "GET /api/audit-logs/?action=CANCEL_INDENT with Auditor token"
+        expected_result: "HTTP 200; filtered audit log entries for CANCEL_INDENT"
+    invalid_tests:
+      - input_action: "GET /api/audit-logs/ with student token (wrong role)"
+        expected_result: "HTTP 403; student cannot view audit logs"
+
+  - id: "BR-PS-018"
+    title: "GRN Existence Check Before Confirm"
+    description: "Confirming a GRN for non-existent ID must return 404, not crash (500)"
+    valid_tests:
+      - input_action: "POST /api/grn/1/confirm/ with remarks — valid GRN exists"
+        expected_result: "HTTP 200/204; GRN confirmed"
+    invalid_tests:
+      - input_action: "POST /api/grn/999999/confirm/ — GRN ID does not exist"
+        expected_result: "HTTP 404; GRN not found — system returns clean error, not 500"
+
+  - id: "BR-PS-019"
+    title: "Designation-Based Stock Access"
+    description: "Stock entry view access is restricted to users with deptadmin or ps_admin designation"
+    valid_tests:
+      - input_action: "GET /api/stock_entry_view/{ps_hd_id} with ps_admin token"
+        expected_result: "HTTP 200; stock entries returned"
+    invalid_tests:
+      - input_action: "GET /api/stock_entry_view/{student_hd_id} with student token"
+        expected_result: "HTTP 403; access denied — insufficient designation"

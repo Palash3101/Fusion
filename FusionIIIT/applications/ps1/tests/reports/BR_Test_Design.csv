@@ -1,0 +1,39 @@
+Test ID,BR ID,Test Category,Input / Action,Expected Result
+BR-PS-001-V-01,BR-PS-001,Valid,POST /api/create_proposal/ with all required fields correctly filled,HTTP 200/201; indent created
+BR-PS-001-I-01,BR-PS-001,Invalid,POST /api/create_proposal/ with empty JSON body {},HTTP 400/422; validation error listing missing required fields
+BR-PS-002-V-01,BR-PS-002,Valid,Submit indent with quantity=1 (minimum valid value),HTTP 200/201; indent accepted
+BR-PS-002-I-01,BR-PS-002,Invalid,Submit indent with quantity=0,HTTP 400; quantity must be at least 1
+BR-PS-003-V-01,BR-PS-003,Valid,GET /api/getDesignations/ with valid Bearer token,HTTP 200; designation data returned
+BR-PS-003-I-01,BR-PS-003,Invalid,GET /api/getDesignations/ without Authorization header,HTTP 401 or 403; access denied — token required
+BR-PS-004-V-01,BR-PS-004,Valid,GET /api/stock_entry_view/{ps_hd_id} with ps_admin token,HTTP 200; stock entry data returned
+BR-PS-004-I-01,BR-PS-004,Invalid,GET /api/stock_entry_view/{student_hd_id} with student token,HTTP 403; student role denied access to stock_entry_view
+BR-PS-005-V-01,BR-PS-005,Valid,POST /api/indents/{id}/reject/ with {reason: 'Insufficient budget allocation'},HTTP 200/204; indent rejected; reason stored
+BR-PS-005-I-01,BR-PS-005,Invalid,POST /api/indents/{id}/reject/ with {reason: ''} or missing reason key,HTTP 400; rejection reason is mandatory
+BR-PS-006-V-01,BR-PS-006,Valid,POST /api/indents/{id}/cancel/ with {reason: 'Changed plans'},HTTP 200/204; indent cancelled; reason persisted
+BR-PS-006-I-01,BR-PS-006,Invalid,POST /api/indents/{id}/cancel/ with {} (empty body),HTTP 400; cancellation reason required
+BR-PS-007-V-01,BR-PS-007,Valid,Cancel indent and verify DB record still exists with status=CANCELLED,Cancel returns 200; IndentFile.objects.filter(pk=id).exists() == True
+BR-PS-007-I-01,BR-PS-007,Invalid,Attempt DELETE /api/indents/{id}/ — method should not exist,HTTP 404 or 405; DELETE method not supported
+BR-PS-008-V-01,BR-PS-008,Valid,POST /api/tenders/create/ by PS admin with estimated_value > threshold,HTTP 200/201; Tender created in DRAFT status
+BR-PS-008-I-01,BR-PS-008,Invalid,POST /api/tenders/create/ without Authorization header,HTTP 401/403; only authorized roles can create tenders
+BR-PS-009-V-01,BR-PS-009,Valid,GET /api/grn/ — list all GRNs; verify has_discrepancy field present,HTTP 200; GRN records returned with has_discrepancy boolean field
+BR-PS-009-I-01,BR-PS-009,Invalid,POST /api/grn/{id}/confirm/ with non-existent GRN ID,HTTP 404; GRN not found — no server crash
+BR-PS-010-V-01,BR-PS-010,Valid,POST /api/vendors/create/ with unique vendor_code (first time),HTTP 200/201; Vendor record created
+BR-PS-010-I-01,BR-PS-010,Invalid,POST /api/vendors/create/ with vendor_code that already exists in DB,HTTP 400; vendor_code already exists — unique constraint
+BR-PS-011-V-01,BR-PS-011,Valid,POST /api/reservations/create/ with valid indent_file_id and stock_item_id,HTTP 200/201; StockReservation created with is_active=True
+BR-PS-011-I-01,BR-PS-011,Invalid,POST /api/reservations/999999/release/ with non-existent reservation ID,HTTP 404; reservation not found — no 500
+BR-PS-012-V-01,BR-PS-012,Valid,GET /api/audit-logs/ — verify audit log accessible to Auditor role,"HTTP 200; AuditLog list with action, user, timestamp"
+BR-PS-012-I-01,BR-PS-012,Invalid,GET /api/audit-logs/ with student token (insufficient role),HTTP 403; access denied to audit logs
+BR-PS-013-V-01,BR-PS-013,Valid,GET /api/returns/ — verify ProductReturn records include invoice_hold field,HTTP 200; returns list with invoice_hold field present
+BR-PS-013-I-01,BR-PS-013,Invalid,POST /api/returns/{id}/process/ with empty body (missing resolution_type),HTTP 400; resolution_type is required
+BR-PS-014-V-01,BR-PS-014,Valid,"POST /api/returns/{id}/process/ with resolution_type='REFUND', remarks='Approved'",HTTP 200/204; return status updated
+BR-PS-014-I-01,BR-PS-014,Invalid,POST /api/returns/{id}/process/ with resolution_type='INVALID_TYPE',HTTP 400; invalid choice for resolution_type
+BR-PS-015-V-01,BR-PS-015,Valid,POST /api/indents/check-duplicates/ with item_name and item_type provided,HTTP 200; duplicate check result returned
+BR-PS-015-I-01,BR-PS-015,Invalid,POST /api/indents/check-duplicates/ with no body {},HTTP 400; item_name field required
+BR-PS-016-V-01,BR-PS-016,Valid,GET /api/vendors/ — list returns vendor records with all fields,"HTTP 200; vendor list; each record has vendor_code, vendor_name, gst_number"
+BR-PS-016-I-01,BR-PS-016,Invalid,GET /api/vendors/999999/ — vendor with this ID does not exist,HTTP 404; vendor not found
+BR-PS-017-V-01,BR-PS-017,Valid,GET /api/audit-logs/?action=CANCEL_INDENT with Auditor token,HTTP 200; filtered audit log entries for CANCEL_INDENT
+BR-PS-017-I-01,BR-PS-017,Invalid,GET /api/audit-logs/ with student token (wrong role),HTTP 403; student cannot view audit logs
+BR-PS-018-V-01,BR-PS-018,Valid,POST /api/grn/1/confirm/ with remarks — valid GRN exists,HTTP 200/204; GRN confirmed
+BR-PS-018-I-01,BR-PS-018,Invalid,POST /api/grn/999999/confirm/ — GRN ID does not exist,"HTTP 404; GRN not found — system returns clean error, not 500"
+BR-PS-019-V-01,BR-PS-019,Valid,GET /api/stock_entry_view/{ps_hd_id} with ps_admin token,HTTP 200; stock entries returned
+BR-PS-019-I-01,BR-PS-019,Invalid,GET /api/stock_entry_view/{student_hd_id} with student token,HTTP 403; access denied — insufficient designation
